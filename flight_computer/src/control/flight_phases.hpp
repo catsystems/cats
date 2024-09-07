@@ -14,11 +14,11 @@ inline constexpr uint16_t TIME_THRESHOLD_CALIB_TO_READY = 1000;
 
 // m/s^2, if the IMU measurement is smaller than 0.6 m/s^2 it is not considered as movement for the transition
 // CALIBRATING -> READY
-inline constexpr float ALLOWED_ACC_ERROR = 0.6F;
+inline constexpr float ALLOWED_ACC_ERROR_CALIB = 0.6F;
 
 // dps, if the GYRO measurement is smaller than 10 dps it is not considered as movement for the transition CALIBRATING
 // -> READY
-inline constexpr float ALLOWED_GYRO_ERROR = 10.0F;
+inline constexpr float ALLOWED_GYRO_ERROR_CALIB = 10.0F;
 
 /* READY */
 
@@ -40,11 +40,15 @@ inline constexpr uint16_t MAIN_SAFETY_COUNTER = 30;
 inline constexpr uint16_t MIN_TICK_COUNTS_BETWEEN_THRUSTING_APOGEE = 1500;
 
 /* MAIN */
-// m/s, velocity needs to be smaller than this to detect touchdown
-inline constexpr float VELOCITY_BOUND_TOUCHDOWN = 3.0F;
+// m/s^2, if the IMU measurement is smaller than 0.6 m/s^2 it is not considered as movement for the transition
+// MAIN -> TOUCHDWON
+inline constexpr float ALLOWED_ACC_ERROR_TD = 0.6F;
+// dps, if the GYRO measurement is smaller than 10 dps it is not considered as movement for the transition MAIN
+// -> TOUCHDWON
+inline constexpr float ALLOWED_GYRO_ERROR_TD = 10.0F;
 
-// num iterations, for at least 1s it needs to be smaller
-inline constexpr uint16_t TOUCHDOWN_SAFETY_COUNTER = 100;
+// num iterations, for at least 3s there can't be imu movement
+inline constexpr uint16_t TOUCHDOWN_SAFETY_COUNTER = 300;
 
 /* Function which implements the FSM */
 void check_flight_phase(flight_fsm_t *fsm_state, vf32_t acc_data, vf32_t gyro_data, estimation_output_t state_data,

@@ -11,7 +11,7 @@ static void check_ready_phase(flight_fsm_t *fsm_state, vf32_t acc_data, const co
 static void check_thrusting_phase(flight_fsm_t *fsm_state, estimation_output_t state_data);
 static void check_coasting_phase(flight_fsm_t *fsm_state, estimation_output_t state_data);
 static void check_drogue_phase(flight_fsm_t *fsm_state, estimation_output_t state_data);
-static void check_main_phase(flight_fsm_t *fsm_state, estimation_output_t state_data);
+static void check_main_phase(flight_fsm_t *fsm_state, vf32_t acc_data, vf32_t gyro_data);
 
 static void clear_fsm_memory(flight_fsm_t *fsm_state);
 static void change_state_to(flight_fsm_e new_state, cats_event_e event_to_trigger, flight_fsm_t *fsm_state);
@@ -39,7 +39,7 @@ void check_flight_phase(flight_fsm_t *fsm_state, vf32_t acc_data, vf32_t gyro_da
       check_drogue_phase(fsm_state, state_data);
       break;
     case MAIN:
-      check_main_phase(fsm_state, state_data);
+      check_main_phase(fsm_state, acc_data, gyro_data);
       break;
     case TOUCHDOWN:
     default:
@@ -52,12 +52,12 @@ void check_flight_phase(flight_fsm_t *fsm_state, vf32_t acc_data, vf32_t gyro_da
 static void check_calibrating_phase(flight_fsm_t *fsm_state, vf32_t acc_data, vf32_t gyro_data) {
   /* Check if the IMU moved between two timesteps */
   /* Add an error bound as the IMU is noisy which is accepted */
-  if ((fabsf(fsm_state->old_acc_data.x - acc_data.x) < ALLOWED_ACC_ERROR) &&
-      (fabsf(fsm_state->old_acc_data.y - acc_data.y) < ALLOWED_ACC_ERROR) &&
-      (fabsf(fsm_state->old_acc_data.z - acc_data.z) < ALLOWED_ACC_ERROR) &&
-      (fabsf(fsm_state->old_gyro_data.x - gyro_data.x) < ALLOWED_GYRO_ERROR) &&
-      (fabsf(fsm_state->old_gyro_data.y - gyro_data.y) < ALLOWED_GYRO_ERROR) &&
-      (fabsf(fsm_state->old_gyro_data.z - gyro_data.z) < ALLOWED_GYRO_ERROR)) {
+  if ((fabsf(fsm_state->old_acc_data.x - acc_data.x) < ALLOWED_ACC_ERROR_CALIB) &&
+      (fabsf(fsm_state->old_acc_data.y - acc_data.y) < ALLOWED_ACC_ERROR_CALIB) &&
+      (fabsf(fsm_state->old_acc_data.z - acc_data.z) < ALLOWED_ACC_ERROR_CALIB) &&
+      (fabsf(fsm_state->old_gyro_data.x - gyro_data.x) < ALLOWED_GYRO_ERROR_CALIB) &&
+      (fabsf(fsm_state->old_gyro_data.y - gyro_data.y) < ALLOWED_GYRO_ERROR_CALIB) &&
+      (fabsf(fsm_state->old_gyro_data.z - gyro_data.z) < ALLOWED_GYRO_ERROR_CALIB)) {
     fsm_state->memory[0]++;
   } else {
     fsm_state->memory[0] = 0;
@@ -137,16 +137,26 @@ static void check_drogue_phase(flight_fsm_t *fsm_state, estimation_output_t stat
   }
 }
 
-static void check_main_phase(flight_fsm_t *fsm_state, estimation_output_t state_data) {
-  /* If the velocity is very small we have touchdown */
-  if (fabsf(state_data.velocity) < VELOCITY_BOUND_TOUCHDOWN) {
-    /* Touchdown achieved */
+static void check_main_phase(flight_fsm_t *fsm_state, vf32_t acc_data, vf32_t gyro_data) {
+  /* Check if the IMU moved between two timesteps */
+  /* Add an error bound as the IMU is noisy which is accepted */
+  if ((fabsf(fsm_state->old_acc_data.x - acc_data.x) < ALLOWED_ACC_ERROR_TD) &&
+      (fabsf(fsm_state->old_acc_data.y - acc_data.y) < ALLOWED_ACC_ERROR_TD) &&
+      (fabsf(fsm_state->old_acc_data.z - acc_data.z) < ALLOWED_ACC_ERROR_TD) &&
+      (fabsf(fsm_state->old_gyro_data.x - gyro_data.x) < ALLOWED_GYRO_ERROR_TD) &&
+      (fabsf(fsm_state->old_gyro_data.y - gyro_data.y) < ALLOWED_GYRO_ERROR_TD) &&
+      (fabsf(fsm_state->old_gyro_data.z - gyro_data.z) < ALLOWED_GYRO_ERROR_TD)) {
     fsm_state->memory[0]++;
   } else {
     /* Touchdown not achieved */
     fsm_state->memory[0] = 0;
   }
 
+  /* Update old IMU value */
+  fsm_state->old_acc_data = acc_data;
+  fsm_state->old_gyro_data = gyro_data;
+
+  /* Check if we reached the threshold */
   if (fsm_state->memory[0] > TOUCHDOWN_SAFETY_COUNTER) {
     change_state_to(TOUCHDOWN, EV_TOUCHDOWN, fsm_state);
   }
