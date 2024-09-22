@@ -67,3 +67,53 @@ void Recorder::recordTask(void *pvParameter) {
   }
   vTaskDelete(nullptr);
 }
+
+uint8_t Recorder::getFileCount() {
+  if (!fatfs.chdir(directory)) {
+    console.warning.print("[REC] Open directory failed");
+    console.warning.println(directory);
+    return 0;
+  }
+
+  // NOLINTNEXTLINE(cppcoreguidelines-init-variables) something is wrong with fatfs
+  File file = fatfs.open("/logs/");
+
+  uint8_t count = 0;
+  // NOLINTNEXTLINE(cppcoreguidelines-init-variables) something is wrong with fatfs
+  File entry = file.openNextFile();
+  while (entry) {
+    count++;
+    entry.close();
+    entry = file.openNextFile();
+  }
+  file.close();
+  return count;
+}
+
+bool Recorder::getFileNameByIndex(uint8_t index, char *name) const {
+  if (!fatfs.chdir(directory)) {
+    console.warning.print("[REC] Open directory failed");
+    console.warning.println(directory);
+    return false;
+  }
+
+  // NOLINTNEXTLINE(cppcoreguidelines-init-variables) something is wrong with fatfs
+  File file = fatfs.open("/logs/");
+
+  uint8_t count = 0;
+  // NOLINTNEXTLINE(cppcoreguidelines-init-variables) something is wrong with fatfs
+  File entry = file.openNextFile();
+  while (entry) {
+    if (count == index) {
+      entry.getName(name, 30);
+      entry.close();
+      file.close();
+      return true;
+    }
+    count++;
+    entry.close();
+    entry = file.openNextFile();
+  }
+  file.close();
+  return false;
+}

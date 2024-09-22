@@ -28,6 +28,12 @@ class Recorder {
     }
   }
 
+  uint8_t getFileCount();
+
+  bool getFileNameByIndex(uint8_t index, char* name) const;
+
+  const char* getDirectory() const { return directory; }
+
  private:
   bool initialized = false;
   bool enabled = false;
