@@ -244,7 +244,7 @@ void Window::initLive() {
   display.drawLine(0, 49, 400, 49, BLACK);
 
   display.drawBitmap(5, 50, live_altitude, 24, 24, BLACK);
-  display.drawBitmap(5, 75, live_speed, 24, 24, BLACK);
+  display.drawBitmap(5, 75, data_speed, 24, 24, BLACK);
   display.drawBitmap(5, 100, live_lat, 24, 24, BLACK);
   display.drawBitmap(5, 125, live_lon, 24, 24, BLACK);
   display.drawBitmap(3, 150, live_battery, 24, 24, BLACK);
@@ -256,7 +256,7 @@ void Window::initLive() {
   display.drawBitmap(358, 149, live_two, 24, 24, BLACK);
 
   display.drawBitmap(205, 50, live_altitude, 24, 24, BLACK);
-  display.drawBitmap(205, 75, live_speed, 24, 24, BLACK);
+  display.drawBitmap(205, 75, data_speed, 24, 24, BLACK);
   display.drawBitmap(205, 100, live_lat, 24, 24, BLACK);
   display.drawBitmap(205, 125, live_lon, 24, 24, BLACK);
   display.drawBitmap(203, 150, live_battery, 24, 24, BLACK);
@@ -825,10 +825,15 @@ void Window::updateTesting(int16_t index) {
   display.refresh();
 }
 
-void Window::initData() {
+void Window::initData(bool fileAvailable) {
   clearMainScreen();
-  drawCentreString("Coming soon...", 200, 100);
-  display.refresh();
+  if (!fileAvailable) {
+    display.setTextSize(1);
+    display.setFont(&FreeSans12pt7b);
+    display.setTextColor(BLACK);
+    drawCentreString("No flight logs found!", 200, 100);
+    display.refresh();
+  }
 }
 
 void Window::initSensors() {
@@ -1329,3 +1334,107 @@ void Window::updateKeyboardText(char *text, uint16_t color) {
  * Clears everything except the status bar.
  */
 void Window::clearMainScreen() { display.fillRect(0, 19, 400, 222, WHITE); }
+
+void Window::listFileName(const char *fileName, uint16_t index, uint16_t color) {
+  display.setFont(&FreeSans9pt7b);
+  display.setTextSize(1);
+  display.setTextColor(color);
+  display.setCursor(10, static_cast<int16_t>(33 + 20 * index));
+  display.print(fileName);
+}
+
+void Window::dataHighlight(const char *fileName, uint8_t index, bool highlight) {
+  display.fillRect(0, static_cast<int16_t>(19 + 20 * index), 400, 20, highlight ? BLACK : WHITE);
+  listFileName(fileName, index, highlight ? WHITE : BLACK);
+}
+
+void Window::dataShowFlightStatistics(FlightStatistics &stats1, FlightStatistics &stats2) {
+  clearMainScreen();
+  display.setTextColor(BLACK);
+  display.setTextSize(1);
+  display.setFont(&FreeSans12pt7b);
+
+  display.drawLine(199, 18, 199, 240, BLACK);
+  display.drawLine(200, 18, 200, 240, BLACK);
+
+  dataShowFlightStatisticsSide(stats1, 0);
+  dataShowFlightStatisticsSide(stats2, 1);
+
+  display.refresh();
+}
+
+void Window::dataShowFlightStatisticsSide(FlightStatistics &stats, uint16_t index) {
+  const auto xOffset = static_cast<int16_t>(index * 200);
+
+  // Max altitude
+  display.drawBitmap(static_cast<int16_t>(xOffset + 9), 25, data_altitude_peak, 24, 24, BLACK);
+  display.setCursor(static_cast<int16_t>(xOffset + 45), 45);
+  const int32_t altitude_m = stats.getMaxAltitude();
+  if (systemConfig.config.unitSystem == UnitSystem::kMetric) {
+    display.print(altitude_m);
+    display.print(" m");
+  } else {
+    display.print(Utils::MetersToFeet(altitude_m));
+    display.print(" ft");
+  }
+
+  // Time to apogee
+  display.drawBitmap(static_cast<int16_t>(xOffset + 9), 50, data_altitude_time, 24, 24, BLACK);
+  display.setCursor(static_cast<int16_t>(xOffset + 45), 70);
+  display.print(stats.getTimeToApogee(), 1);
+  display.print(" s");
+
+  // Max speed
+  display.drawBitmap(static_cast<int16_t>(xOffset + 5), 75, data_speed, 24, 24, BLACK);
+  display.setCursor(static_cast<int16_t>(xOffset + 45), 95);
+  const int32_t velocity_ms = stats.getMaxVelocity();
+  if (systemConfig.config.unitSystem == UnitSystem::kMetric) {
+    display.print(velocity_ms);
+    display.print(" m/s");
+  } else {
+    display.print(Utils::MetersToFeet(velocity_ms));
+    display.print(" ft/s");
+  }
+
+  // Drogue descent rate
+  display.drawBitmap(static_cast<int16_t>(xOffset + 8), 100, data_drogue_speed, 24, 24, BLACK);
+  display.setCursor(static_cast<int16_t>(xOffset + 45), 120);
+  const float drogue_velocity_ms = stats.getDrogueDescentRate();
+  if (systemConfig.config.unitSystem == UnitSystem::kMetric) {
+    display.print(drogue_velocity_ms, 1);
+    display.print(" m/s");
+  } else {
+    display.print(Utils::MetersToFeet(drogue_velocity_ms), 1);
+    display.print(" ft/s");
+  }
+
+  // Main descent rate
+  display.drawBitmap(static_cast<int16_t>(xOffset + 5), 125, data_main_speed, 24, 24, BLACK);
+  display.setCursor(static_cast<int16_t>(xOffset + 45), 145);
+  const float main_velocity_ms = stats.getMainDescentRate();
+  if (systemConfig.config.unitSystem == UnitSystem::kMetric) {
+    display.print(main_velocity_ms, 1);
+    display.print(" m/s");
+  } else {
+    display.print(Utils::MetersToFeet(main_velocity_ms), 1);
+    display.print(" ft/s");
+  }
+
+  // Latitude
+  display.drawBitmap(static_cast<int16_t>(xOffset + 5), 150, live_lat, 24, 24, BLACK);
+  display.setCursor(static_cast<int16_t>(xOffset + 45), 170);
+  display.print(stats.getLastLatitude(), 4);
+  display.print(" N");
+
+  // Longitude
+  display.drawBitmap(static_cast<int16_t>(xOffset + 5), 175, live_lon, 24, 24, BLACK);
+  display.setCursor(static_cast<int16_t>(xOffset + 45), 195);
+  display.print(stats.getLastLongitude(), 4);
+  display.print(" E");
+
+  // Flight Time
+  display.drawBitmap(static_cast<int16_t>(xOffset + 5), 200, data_flight_time, 24, 24, BLACK);
+  display.setCursor(static_cast<int16_t>(xOffset + 45), 220);
+  display.print(stats.getFlightTime(), 1);
+  display.print(" s");
+}

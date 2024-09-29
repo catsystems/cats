@@ -7,6 +7,7 @@
 #include <Adafruit_GFX.h>
 #include <Adafruit_SharpMem.h>
 
+#include "logging/flightStatistics.hpp"
 #include "navigation.hpp"
 #include "settings.hpp"
 #include "telemetry/telemetryData.hpp"
@@ -57,7 +58,7 @@ class Window {
   void updateTesting(int16_t index);
   void initTestingBox(int16_t index);
 
-  void initData();
+  void initData(bool fileAvailable);
 
   void initSensors();
   void initSensorPrepareCalibrate();
@@ -75,6 +76,10 @@ class Window {
   void initKeyboard(char *text, uint32_t maxLength = 0);
   void updateKeyboard(char *text, int32_t keyHighlight, bool keyPressed = false);
 
+  void listFileName(const char *fileName, uint16_t index, uint16_t color = BLACK);
+  void dataHighlight(const char *fileName, uint8_t index, bool highlight);
+  void dataShowFlightStatistics(FlightStatistics &stats1, FlightStatistics &stats2);
+
   void refresh() { display.refresh(); }
 
   static constexpr uint8_t kShiftIdx = 29;
@@ -91,6 +96,8 @@ class Window {
 
   void highlightKeyboardKey(int32_t key, uint16_t color);
   void updateKeyboardText(char *text, uint16_t color);
+
+  void dataShowFlightStatisticsSide(FlightStatistics &stats, uint16_t index);
 
   void clearMainScreen();
 

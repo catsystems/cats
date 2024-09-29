@@ -104,6 +104,10 @@ class Hmi {
 
   int16_t menuIndex = 0;
 
+  uint8_t dataIndex = 0;
+  uint8_t dataFileCount = 0;
+  bool dataFlightStatistic = false;
+
   uint32_t flashFreeMemory = 100;
 
   bool link1Log = false;
