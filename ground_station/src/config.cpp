@@ -71,8 +71,6 @@ void Config::load() {
   }
   if (!systemParser.getUnitSystem(config.unitSystem)) {
     config.unitSystem = UnitSystem::kMetric;
-  } else {
-    console.log.println(unit_map[static_cast<uint8_t>(config.unitSystem)]);
   }
 
   config.neverStopLogging = stop;

@@ -4,13 +4,15 @@
 
 #include "hmi.hpp"
 
+#include <TimeLib.h>
+#include <freertos/task.h>
+#include <algorithm>
+
 #include "console.hpp"
+#include "logging/flightStatistics.hpp"
 #include "navigation.hpp"
 #include "telemetry/telemetry.hpp"
 #include "utils.hpp"
-
-#include <TimeLib.h>
-#include <freertos/task.h>
 
 // NOLINTBEGIN(cppcoreguidelines-avoid-non-const-global-variables)
 extern Telemetry link1;
@@ -317,12 +319,77 @@ void Hmi::testing() {
 
 /* DATA */
 
-void Hmi::initData() { window.initData(); }
+void Hmi::initData() {
+  dataFileCount = recorder.getFileCount();
+
+  // The display can show a maximum of 11 entries, no scrolling implemented!
+  // It is highly unlikely to get more than 11 flight logs because the flash is quite small
+  dataFileCount = std::min<decltype(dataFileCount)>(dataFileCount, 11);
+
+  if (dataFileCount > 0) {
+    window.initData(true);
+    char fileName[30] = {};
+    for (uint8_t i = 0; i < dataFileCount; i++) {
+      recorder.getFileNameByIndex(i, fileName);
+      if (i == dataIndex) {
+        window.dataHighlight(fileName, i, true);
+      } else {
+        window.listFileName(fileName, i);
+      }
+    }
+  } else {
+    window.initData(false);
+  }
+  window.refresh();
+}
 
 void Hmi::data() {
-  if (backButton.wasPressed()) {
-    state = MENU;
-    window.initMenu(menuIndex);
+  if (dataFlightStatistic) {
+    if (backButton.wasPressed()) {
+      dataFlightStatistic = false;
+      initData();
+    }
+  } else {
+    if (backButton.wasPressed()) {
+      state = MENU;
+      window.initMenu(menuIndex);
+      dataIndex = 0;
+    }
+    if (downButton.wasPressed() && dataIndex < (dataFileCount - 1)) {
+      dataIndex++;
+      char fileName[30] = {};
+      if (dataIndex >= 1) {
+        recorder.getFileNameByIndex(dataIndex - 1, fileName);
+        window.dataHighlight(fileName, dataIndex - 1, false);
+      }
+      recorder.getFileNameByIndex(dataIndex, fileName);
+      window.dataHighlight(fileName, dataIndex, true);
+      window.refresh();
+    }
+    if (upButton.wasPressed() && dataIndex > 0) {
+      dataIndex--;
+      char fileName[30] = {};
+      if (dataIndex < (dataFileCount - 1)) {
+        recorder.getFileNameByIndex(dataIndex + 1, fileName);
+        window.dataHighlight(fileName, dataIndex + 1, false);
+      }
+      recorder.getFileNameByIndex(dataIndex, fileName);
+      window.dataHighlight(fileName, dataIndex, true);
+      window.refresh();
+    }
+
+    if (okButton.wasPressed() && (dataFileCount > 0)) {
+      FlightStatistics stats1;
+      FlightStatistics stats2;
+      char fileName[30] = {};
+      // NOLINTNEXTLINE(cppcoreguidelines-init-variables) not sure why...
+      const char *directory = recorder.getDirectory();
+      recorder.getFileNameByIndex(dataIndex, fileName);
+      stats1.parseFlightLog(directory, fileName, 1U);
+      stats2.parseFlightLog(directory, fileName, 2U);
+      dataFlightStatistic = true;
+      window.dataShowFlightStatistics(stats1, stats2);
+    }
   }
 }
 
